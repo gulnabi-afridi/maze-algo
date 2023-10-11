@@ -37,6 +37,20 @@ const MazePage: React.FC = () => {
     }
   };
 
+  const removeRandomWalls = () => {
+    // You can change this value to control how many walls are removed.
+    let numWallsToRemove = Math.floor(grid.length * 0.2); // Remove 20% of total walls
+
+    while (numWallsToRemove > 0) {
+      const randomCell = grid[Math.floor(Math.random() * grid.length)];
+      const wallIndex = Math.floor(Math.random() * 4);
+      if (randomCell.walls[wallIndex]) {
+        randomCell.walls[wallIndex] = false;
+        numWallsToRemove--;
+      }
+    }
+  };
+
   const setup = () => {
     if (!canvasRef.current) return;
     const ctx = canvasRef.current.getContext('2d');
@@ -44,6 +58,7 @@ const MazePage: React.FC = () => {
 
     cols = Math.floor(800 / w);
     rows = Math.floor(800 / w);
+    grid.length = 0; // Clear the grid array
 
     for (let j = 0; j < rows; j++) {
       for (let i = 0; i < cols; i++) {
@@ -86,17 +101,26 @@ const MazePage: React.FC = () => {
       }
     }
 
-    startCell = grid[Math.floor(Math.random() * grid.length)];
-    goalCell = grid[Math.floor(Math.random() * grid.length)];
+    const randomIndex = () => Math.floor(Math.random() * grid.length);
 
-    while (startCell.id === goalCell.id) {
-      goalCell = grid[Math.floor(Math.random() * grid.length)];
+    let startCellIndex = randomIndex();
+    let goalCellIndex = randomIndex();
+
+    // Ensure the start and goal cells are not the same
+    while (startCellIndex === goalCellIndex) {
+      goalCellIndex = randomIndex();
     }
+
+    startCell = grid[startCellIndex];
+    goalCell = grid[goalCellIndex];
 
     startCell.isStart = true;
     goalCell.isGoal = true;
 
     current = startCell;
+
+    // Introduce multiple solutions by removing random walls
+    removeRandomWalls();
   };
 
   const draw = () => {
@@ -176,7 +200,7 @@ const MazePage: React.FC = () => {
 
   useEffect(() => {
     setup();
-    draw();
+    requestAnimationFrame(draw); // First drawing call, subsequent calls will be made recursively inside draw()
   }, []);
 
   return <canvas ref={canvasRef} width={800} height={800}></canvas>;
