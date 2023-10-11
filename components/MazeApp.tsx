@@ -1,7 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+'use client';
+import React, { useEffect, useState, useRef } from 'react';
 
 const MazePage: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [allPaths, setAllPaths] = useState<any[]>([]);
   const w = 30;
   let cols: number;
   let rows: number;
@@ -37,20 +39,6 @@ const MazePage: React.FC = () => {
     }
   };
 
-  const removeRandomWalls = () => {
-    // You can change this value to control how many walls are removed.
-    let numWallsToRemove = Math.floor(grid.length * 0.2); // Remove 20% of total walls
-
-    while (numWallsToRemove > 0) {
-      const randomCell = grid[Math.floor(Math.random() * grid.length)];
-      const wallIndex = Math.floor(Math.random() * 4);
-      if (randomCell.walls[wallIndex]) {
-        randomCell.walls[wallIndex] = false;
-        numWallsToRemove--;
-      }
-    }
-  };
-
   const setup = () => {
     if (!canvasRef.current) return;
     const ctx = canvasRef.current.getContext('2d');
@@ -58,7 +46,7 @@ const MazePage: React.FC = () => {
 
     cols = Math.floor(800 / w);
     rows = Math.floor(800 / w);
-    grid.length = 0; // Clear the grid array
+    grid.length = 0;
 
     for (let j = 0; j < rows; j++) {
       for (let i = 0; i < cols; i++) {
@@ -70,19 +58,56 @@ const MazePage: React.FC = () => {
           visited: false,
           isStart: false,
           isGoal: false,
-          highlight() {
+          highlight(ctx: CanvasRenderingContext2D) {
             const x = this.i * w;
             const y = this.j * w;
             ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
             ctx.fillRect(x, y, w, w);
           },
-          checkNeighbors() {
-            const neighbors = [];
 
-            const top = grid[index(i, j - 1)];
-            const right = grid[index(i + 1, j)];
-            const bottom = grid[index(i, j + 1)];
-            const left = grid[index(i - 1, j)];
+          show(ctx: CanvasRenderingContext2D) {
+            const x = this.i * w;
+            const y = this.j * w;
+
+            // Draw walls
+            ctx.beginPath();
+            ctx.strokeStyle = 'white'; // Wall color
+            if (this.walls[0]) {
+              ctx.moveTo(x, y);
+              ctx.lineTo(x + w, y);
+            }
+            if (this.walls[1]) {
+              ctx.moveTo(x + w, y);
+              ctx.lineTo(x + w, y + w);
+            }
+            if (this.walls[2]) {
+              ctx.moveTo(x + w, y + w);
+              ctx.lineTo(x, y + w);
+            }
+            if (this.walls[3]) {
+              ctx.moveTo(x, y + w);
+              ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Fill cell colors
+            if (this.isStart) {
+              ctx.fillStyle = 'purple';
+              ctx.fillRect(x, y, w, w);
+            } else if (this.isGoal) {
+              ctx.fillStyle = 'red';
+              ctx.fillRect(x, y, w, w);
+            } else if (this.visited) {
+              ctx.fillStyle = 'rgba(0, 255, 0, 0.4)';
+              ctx.fillRect(x, y, w, w);
+            }
+          },
+          checkNeighbors() {
+            const neighbors: any[] = [];
+            const top = grid[index(this.i, this.j - 1)];
+            const right = grid[index(this.i + 1, this.j)];
+            const bottom = grid[index(this.i, this.j + 1)];
+            const left = grid[index(this.i - 1, this.j)];
 
             if (top && !top.visited) neighbors.push(top);
             if (right && !right.visited) neighbors.push(right);
@@ -101,98 +126,55 @@ const MazePage: React.FC = () => {
       }
     }
 
-    const randomIndex = () => Math.floor(Math.random() * grid.length);
-
-    let startCellIndex = randomIndex();
-    let goalCellIndex = randomIndex();
-
-    // Ensure the start and goal cells are not the same
-    while (startCellIndex === goalCellIndex) {
-      goalCellIndex = randomIndex();
-    }
-
-    startCell = grid[startCellIndex];
-    goalCell = grid[goalCellIndex];
-
+    startCell = grid[0];
+    goalCell = grid[grid.length - 1];
     startCell.isStart = true;
     goalCell.isGoal = true;
-
     current = startCell;
+    stack.length = 0;
+  };
 
-    // Introduce multiple solutions by removing random walls
-    removeRandomWalls();
+  const resetGrid = () => {
+    for (const cell of grid) {
+      cell.visited = false;
+    }
+    current = startCell;
+    stack.length = 0;
   };
 
   const draw = () => {
     if (!canvasRef.current) return;
     const ctx = canvasRef.current.getContext('2d');
     if (!ctx) return;
+    ctx.clearRect(0, 0, 800, 800); // Clear the canvas
 
-    ctx.fillStyle = '#000';
+    // Set canvas background to black
+    ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, 800, 800);
-    ctx.strokeStyle = '#FFF';
 
+    // Drawing grid and walls
+    ctx.beginPath();
     for (const cell of grid) {
-      const x = cell.i * w;
-      const y = cell.j * w;
-
-      if (cell.walls[0]) {
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + w, y);
-        ctx.stroke();
-      }
-      if (cell.walls[1]) {
-        ctx.beginPath();
-        ctx.moveTo(x + w, y);
-        ctx.lineTo(x + w, y + w);
-        ctx.stroke();
-      }
-      if (cell.walls[2]) {
-        ctx.beginPath();
-        ctx.moveTo(x + w, y + w);
-        ctx.lineTo(x, y + w);
-        ctx.stroke();
-      }
-      if (cell.walls[3]) {
-        ctx.beginPath();
-        ctx.moveTo(x, y + w);
-        ctx.lineTo(x, y);
-        ctx.stroke();
-      }
-
-      if (cell.visited) {
-        ctx.fillStyle = 'rgba(128, 128, 0, 0.5)';
-        ctx.fillRect(x, y, w, w);
-      }
-
-      if (cell.isStart) {
-        ctx.fillStyle = 'rgba(0, 0, 255, 0.5)';
-        ctx.fillRect(x, y, w, w);
-      }
-
-      if (cell.isGoal) {
-        ctx.fillStyle = 'rgba(0, 255, 0, 0.5)';
-        ctx.fillRect(x, y, w, w);
-      }
+      cell.show(ctx);
     }
+    ctx.stroke();
 
     if (current === goalCell) {
-      return;
-    }
+      setAllPaths((prevPaths) => [...prevPaths, [...stack, current]]);
+      resetGrid();
+    } else {
+      current.visited = true;
+      current.highlight(ctx);
 
-    current.visited = true;
-    current.highlight();
-
-    const next = current.checkNeighbors();
-
-    if (next) {
-      next.visited = true;
-      stack.push(current);
-      removeWalls(current, next);
-      current = next;
-    } else if (stack.length > 0) {
-      current = stack.pop();
+      const next = current.checkNeighbors();
+      if (next) {
+        next.visited = true;
+        stack.push(current);
+        removeWalls(current, next);
+        current = next;
+      } else if (stack.length > 0) {
+        current = stack.pop();
+      }
     }
 
     requestAnimationFrame(draw);
@@ -200,7 +182,7 @@ const MazePage: React.FC = () => {
 
   useEffect(() => {
     setup();
-    requestAnimationFrame(draw); // First drawing call, subsequent calls will be made recursively inside draw()
+    requestAnimationFrame(draw);
   }, []);
 
   return <canvas ref={canvasRef} width={800} height={800}></canvas>;
