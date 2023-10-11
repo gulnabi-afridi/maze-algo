@@ -39,6 +39,26 @@ const MazePage: React.FC = () => {
     }
   };
 
+  const checkNeighborsWithLocks = (cell: any) => {
+    const neighbors: any[] = [];
+    const top = grid[index(cell.i, cell.j - 1)];
+    const right = grid[index(cell.i + 1, cell.j)];
+    const bottom = grid[index(cell.i, cell.j + 1)];
+    const left = grid[index(cell.i - 1, cell.j)];
+
+    if (top && !top.visited && !top.lock) neighbors.push(top);
+    if (right && !right.visited && !right.lock) neighbors.push(right);
+    if (bottom && !bottom.visited && !bottom.lock) neighbors.push(bottom);
+    if (left && !left.visited && !left.lock) neighbors.push(left);
+
+    if (neighbors.length > 0) {
+      const r = Math.floor(Math.random() * neighbors.length);
+      return neighbors[r];
+    } else {
+      return undefined;
+    }
+  };
+
   const setup = () => {
     if (!canvasRef.current) return;
     const ctx = canvasRef.current.getContext('2d');
@@ -103,25 +123,6 @@ const MazePage: React.FC = () => {
               ctx.fillRect(x, y, w, w);
             }
           },
-          checkNeighbors() {
-            const neighbors: any[] = [];
-            const top = grid[index(this.i, this.j - 1)];
-            const right = grid[index(this.i + 1, this.j)];
-            const bottom = grid[index(this.i, this.j + 1)];
-            const left = grid[index(this.i - 1, this.j)];
-
-            if (top && !top.visited) neighbors.push(top);
-            if (right && !right.visited) neighbors.push(right);
-            if (bottom && !bottom.visited) neighbors.push(bottom);
-            if (left && !left.visited) neighbors.push(left);
-
-            if (neighbors.length > 0) {
-              const r = Math.floor(Math.random() * neighbors.length);
-              return neighbors[r];
-            } else {
-              return undefined;
-            }
-          },
         };
         grid.push(cell);
       }
@@ -171,8 +172,8 @@ const MazePage: React.FC = () => {
         current.visited = true;
         current.highlight(ctx);
 
-        const next = current.checkNeighbors();
-        if (next && !next.lock) {
+        const next = checkNeighborsWithLocks(current);
+        if (next) {
           // Only visit the next cell if it is not locked
           next.visited = true;
           stack.push(current);
