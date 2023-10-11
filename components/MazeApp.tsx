@@ -54,6 +54,7 @@ const MazePage: React.FC = () => {
           id: `${i}-${j}`,
           i,
           j,
+          lock: false,
           walls: [true, true, true, true],
           visited: false,
           isStart: false,
@@ -136,7 +137,9 @@ const MazePage: React.FC = () => {
 
   const resetGrid = () => {
     for (const cell of grid) {
-      cell.visited = false;
+      if (!cell.lock) {
+        cell.visited = false;
+      }
     }
     current = startCell;
     stack.length = 0;
@@ -163,20 +166,25 @@ const MazePage: React.FC = () => {
       setAllPaths((prevPaths) => [...prevPaths, [...stack, current]]);
       resetGrid();
     } else {
-      current.visited = true;
-      current.highlight(ctx);
+      if (!current.lock) {
+        // Only visit if the cell is not locked
+        current.visited = true;
+        current.highlight(ctx);
 
-      const next = current.checkNeighbors();
-      if (next) {
-        next.visited = true;
-        stack.push(current);
-        removeWalls(current, next);
-        current = next;
+        const next = current.checkNeighbors();
+        if (next && !next.lock) {
+          // Only visit the next cell if it is not locked
+          next.visited = true;
+          stack.push(current);
+          removeWalls(current, next);
+          current = next;
+        } else if (stack.length > 0) {
+          current = stack.pop();
+        }
       } else if (stack.length > 0) {
         current = stack.pop();
       }
     }
-
     requestAnimationFrame(draw);
   };
 
